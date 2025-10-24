@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: pokeapi-backend:latest
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - SD_API_URL=${SD_API_URL}
+      - SD_API_KEY=${SD_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET}
+      - OAUTH_TOKEN_URL=${OAUTH_TOKEN_URL}
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    image: pokeapi-frontend:latest
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE=http://backend:3000
+    depends_on:
+      - backend
