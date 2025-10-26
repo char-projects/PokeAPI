@@ -10,6 +10,7 @@ export const oauthExchange = async (req: Request, res: Response) => {
     if (tr.refresh_token) res.cookie('refresh_token', tr.refresh_token, { httpOnly: true, secure: true, sameSite: 'lax' })
     return res.json(tr)
   } catch (err: any) {
+    console.error('OAuth exchange failed:', err?.response?.data || err?.message || err)
     return res.status(err?.response?.status || 500).json(err?.response?.data || { error: 'token exchange failed' })
   }
 }
@@ -23,6 +24,7 @@ export const oauthRefresh = async (req: Request, res: Response) => {
     if (tr.refresh_token) res.cookie('refresh_token', tr.refresh_token, { httpOnly: true, secure: true, sameSite: 'lax' })
     return res.json(tr)
   } catch (err: any) {
+    console.error('OAuth refresh failed:', err?.response?.data || err?.message || err)
     return res.status(err?.response?.status || 500).json(err?.response?.data || { error: 'refresh failed' })
   }
 }

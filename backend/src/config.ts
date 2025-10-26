@@ -1,8 +1,10 @@
 import path from 'path'
 import { fileURLToPath } from 'url'
+import dotenv from 'dotenv'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
 const get = (k: string, fallback?: string) => process.env[k] ?? fallback
 
@@ -34,4 +36,8 @@ export default {
   OAUTH_TOKEN_URL,
   FRONTEND_ORIGIN,
   DATA_DIR,
+}
+
+if (OAUTH_CLIENT_ID && !OAUTH_CLIENT_SECRET) {
+  console.warn('OAUTH_CLIENT_ID is set but OAUTH_CLIENT_SECRET is missing. Token exchange may fail for providers that require a client_secret (e.g. Google web app).')
 }

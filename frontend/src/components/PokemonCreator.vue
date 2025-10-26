@@ -73,7 +73,5 @@ export default {
     return { animals, abilities, base, ability, onSubmit, loading, imageUrl, share }
   }
 }
-</script>
 
-<style scoped>
-</style>
+</script>

@@ -4,9 +4,9 @@
       class="fixed inset-0 flex items-center justify-center bg-black/40 z-50"
       @click.self="close"
   >
-    <div
-        class="bg-white rounded-xl shadow-lg w-11/12 max-w-sm p-6 relative animate-fade-in"
-    >
+  <div
+    class="bg-white rounded-xl shadow-lg w-11/12 max-w-sm p-6 relative transition-transform transition-opacity duration-200 ease-out"
+  >
       <button
           @click="close"
           aria-label="Close modal"
@@ -51,7 +51,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue"
+import { ref } from "vue"
 
 const props = defineProps<{ open: boolean; image: string }>()
 const emit = defineEmits<{ (e: "close"): void }>()
@@ -84,20 +84,5 @@ const shareNative = () => {
     url: window.location.href,
   })
 }
-</script>
 
-<style scoped>
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out;
-}
-</style>
+</script>

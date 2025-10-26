@@ -3,11 +3,14 @@ import type { Request, Response, NextFunction } from 'express'
 import cors from 'cors'
 import axios from 'axios'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import dotenv from 'dotenv'
 import * as jwt from 'jsonwebtoken'
 import cookieParser from 'cookie-parser'
 
-dotenv.config({ path:path.resolve(process.cwd(), '../.env') })
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+dotenv.config({ path: path.resolve(__dirname, '../.env') })
 
 const app = express()
 app.use(cors())
@@ -20,6 +23,8 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h'
 const OAUTH_CLIENT_ID = process.env.OAUTH_CLIENT_ID || process.env.VITE_OAUTH_CLIENT_ID
 const OAUTH_CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET || process.env.VITE_OAUTH_CLIENT_SECRET
 const OAUTH_TOKEN_URL = process.env.OAUTH_TOKEN_URL || process.env.VITE_OAUTH_TOKEN_URL
+
+console.log('OAuth config: client_id present=', !!OAUTH_CLIENT_ID, 'client_secret present=', !!OAUTH_CLIENT_SECRET, 'token_url=', !!OAUTH_TOKEN_URL)
 
 import './db.js'
 import Pokemon from './models/Pokemon.js'
@@ -52,6 +57,10 @@ app.post('/api/oauth/exchange', async (req: Request, res: Response) => {
   if (!OAUTH_TOKEN_URL || !OAUTH_CLIENT_ID) return res.status(500).json({ error: 'OAuth server not configured on backend' })
 
   try {
+    if (!OAUTH_CLIENT_SECRET) {
+      console.error('OAUTH_CLIENT_SECRET is not set in the backend environment')
+      return res.status(500).json({ error: 'OAUTH_CLIENT_SECRET not set on backend; configure backend/.env' })
+    }
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
@@ -59,7 +68,7 @@ app.post('/api/oauth/exchange', async (req: Request, res: Response) => {
       client_id: OAUTH_CLIENT_ID,
       code_verifier,
     })
-    if (OAUTH_CLIENT_SECRET) body.set('client_secret', OAUTH_CLIENT_SECRET)
+    body.set('client_secret', OAUTH_CLIENT_SECRET)
 
     const r = await axios.post(OAUTH_TOKEN_URL, body.toString(), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
     const tr = r.data
@@ -68,6 +77,14 @@ app.post('/api/oauth/exchange', async (req: Request, res: Response) => {
     return res.json(tr)
   } catch (err: any) {
     console.error('oauth exchange failed', err?.toString())
+    if (err?.response) {
+      try {
+        console.error('provider response status=', err.response.status)
+        console.error('provider response data=', JSON.stringify(err.response.data))
+      } catch (e) {
+        console.error('failed to stringify provider response', e)
+      }
+    }
     return res.status(err?.response?.status || 500).json(err?.response?.data || { error: 'token exchange failed' })
   }
 })
@@ -120,8 +137,10 @@ app.post('/api/generate', async (req, res) => {
   const prompt = req.body?.prompt
   if (!prompt) return res.status(400).json({ error: 'prompt required' })
 
-  const SD_URL = process.env.SD_API_URL || process.env.VITE_SD_API_URL || 'http://stable-diffusion.42malaga.com:7860'
-  const SD_KEY = process.env.SD_API_KEY || process.env.VITE_SD_API_KEY || ''
+  const rawSdUrl = process.env.SD_API_URL || process.env.VITE_SD_API_URL || 'http://stable-diffusion.42malaga.com:7860'
+  const SD_URL = (typeof rawSdUrl === 'string' ? rawSdUrl.trim() : rawSdUrl)
+  const rawSdKey = process.env.SD_API_KEY || process.env.VITE_SD_API_KEY || ''
+  const SD_KEY = (typeof rawSdKey === 'string' ? rawSdKey.trim() : rawSdKey)
 
   try {
     const r = await axios.post(
@@ -139,8 +158,25 @@ app.post('/api/generate', async (req, res) => {
     return res.json(r.data)
   } catch (err: any) {
     console.error('generate error', err?.toString())
+    if (err?.response) {
+      try {
+        console.error('SD provider status=', err.response.status)
+        console.error('SD provider data=', JSON.stringify(err.response.data))
+      } catch (e) {
+        console.error('failed to stringify sd provider response', e)
+      }
+    }
     const status = err?.response?.status || 500
     const data = err?.response?.data || { error: 'failed to generate' }
+    if ((process.env.NODE_ENV || 'development') !== 'production') {
+      try {
+        const placeholderBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII='
+        return res.json({ image: placeholderBase64 })
+      } catch (e) {
+        console.error('error while returning placeholder fallback', e)
+      }
+    }
+
     return res.status(status).json(data)
   }
 })

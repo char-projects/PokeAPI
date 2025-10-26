@@ -14,7 +14,16 @@ router.post('/generate', generateLimiter, validateBody(generateSchema), async (r
     const result = await generateImage(prompt)
     return res.json(result)
   } catch (err: any) {
-    return res.status(err?.response?.status || 500).json(err?.response?.data || { error: 'failed to generate' })
+    console.error('Generate error:', {
+      message: err?.message,
+      status: err?.response?.status,
+      responseData: err?.response?.data,
+      stack: err?.stack,
+    })
+
+    const status = err?.response?.status || 500
+    const payload = err?.response?.data || { error: err?.message || 'failed to generate' }
+    return res.status(status).json(payload)
   }
 })
 

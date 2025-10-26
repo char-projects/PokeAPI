@@ -1,4 +1,7 @@
 import express from 'express'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import fs from 'fs'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import apiRouter from './routes/api.js'
@@ -19,6 +22,20 @@ app.get('/', (_req, res) => res.status(200).send('Backend is running'))
 
 app.use('/api', apiRouter)
 app.use('/api', authRouter)
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+const shouldServeFrontend = process.env.SERVE_FRONTEND === 'true' || process.env.NODE_ENV === 'production'
+const distPath = path.resolve(__dirname, '../../frontend/dist')
+if (shouldServeFrontend && fs.existsSync(distPath)) {
+  app.use(express.static(distPath))
+
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next()
+    res.sendFile(path.join(distPath, 'index.html'))
+  })
+}
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   res.status(500).json({ error: 'internal server error' })

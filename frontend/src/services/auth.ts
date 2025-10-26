@@ -18,8 +18,13 @@ const CLIENT_ID = import.meta.env.VITE_OAUTH_CLIENT_ID as string
 const AUTHORIZE_URL = import.meta.env.VITE_OAUTH_AUTHORIZE_URL as string
 const TOKEN_URL = import.meta.env.VITE_OAUTH_TOKEN_URL as string | undefined
 const REDIRECT_URI = import.meta.env.VITE_OAUTH_REDIRECT_URI as string
-const SCOPES = (import.meta.env.VITE_OAUTH_SCOPES as string) || "openid profile email"
-const BACKEND_EXCHANGE = import.meta.env.VITE_OAUTH_BACKEND_TOKEN_EXCHANGE as string | undefined
+let SCOPES = (import.meta.env.VITE_OAUTH_SCOPES as string) || "openid profile email"
+if (SCOPES.includes('@') || SCOPES.trim().startsWith('mailto:')) {
+    console.warn('VITE_OAUTH_SCOPES looks like an email address; falling back to default scopes')
+    SCOPES = 'openid profile email'
+}
+const _BACKEND_OAUTH_BASE = (import.meta.env.VITE_OAUTH_BACKEND_TOKEN_EXCHANGE as string | undefined) ?? '/api/oauth'
+const BACKEND_OAUTH_BASE = _BACKEND_OAUTH_BASE.replace(/\/exchange\/?$/i, '')
 
 const randomString = (length = 64) => {
     const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
@@ -76,8 +81,9 @@ export const loginWithPKCE = async () => {
         code_challenge: codeChallenge,
         code_challenge_method: "S256",
     })
-
-    window.location.href = `${AUTHORIZE_URL}?${params.toString()}`
+    const redirectUrl = `${AUTHORIZE_URL}?${params.toString()}`
+    console.debug('Redirecting to OAuth authorize URL:', redirectUrl)
+    window.location.href = redirectUrl
 }
 
 export const handleRedirectCallback = async (): Promise<TokenResponse | null> => {
@@ -95,49 +101,68 @@ export const handleRedirectCallback = async (): Promise<TokenResponse | null> =>
         throw new Error("PKCE code_verifier not found in storage.")
     }
     localStorage.removeItem(LS_KEY.CODE_VERIFIER)
-
-    if (BACKEND_EXCHANGE) {
-        const res = await fetch(BACKEND_EXCHANGE, {
+    let backendError: string | null = null
+    try {
+        const res = await fetch(`${BACKEND_OAUTH_BASE}/exchange`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ code, redirect_uri: REDIRECT_URI, code_verifier: codeVerifier }),
             credentials: "include",
         })
-        if (!res.ok) {
-            console.error("Backend token exchange failed", await res.text())
-            return null
+        const text = await res.text()
+        if (res.ok) {
+            try {
+                const tr: TokenResponse = JSON.parse(text)
+                saveTokens(tr)
+                return tr
+            } catch (e) {
+                console.error('Failed to parse token response JSON', e, text)
+                backendError = `Failed to parse backend token response: ${text}`
+            }
+        } else {
+            backendError = `Backend token exchange failed (status ${res.status}): ${text}`
+            console.warn(backendError)
         }
-        const tr: TokenResponse = await res.json()
-        saveTokens(tr)
-        return tr
+    } catch (err: any) {
+        backendError = `Backend token exchange error: ${String(err)}`
+        console.warn(backendError)
     }
 
     if (!TOKEN_URL) {
-        throw new Error("No TOKEN_URL configured and no BACKEND_EXCHANGE provided.")
+        const msg = backendError || "No TOKEN_URL configured and backend exchange failed."
+        console.error(msg)
+        throw new Error(msg)
     }
 
-    const body = new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: CLIENT_ID,
-        code,
-        redirect_uri: REDIRECT_URI,
-        code_verifier: codeVerifier,
-    })
+    try {
+        const body = new URLSearchParams({
+            grant_type: "authorization_code",
+            client_id: CLIENT_ID,
+            code,
+            redirect_uri: REDIRECT_URI,
+            code_verifier: codeVerifier,
+        })
 
-    const res = await fetch(TOKEN_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: body.toString(),
-    })
+        const res2 = await fetch(TOKEN_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString(),
+        })
 
-    if (!res.ok) {
-        console.error("Token exchange failed", await res.text())
-        return null
+        if (!res2.ok) {
+            const text2 = await res2.text()
+            const msg = `Provider token exchange failed (status ${res2.status}): ${text2}`
+            console.error(msg)
+            throw new Error(`${backendError ? backendError + ' | ' : ''}${msg}`)
+        }
+
+        const tr: TokenResponse = await res2.json()
+        saveTokens(tr)
+        return tr
+    } catch (err: any) {
+        const combined = `${backendError ? backendError + ' | ' : ''}${err?.message || String(err)}`
+        throw new Error(combined)
     }
-
-    const tr: TokenResponse = await res.json()
-    saveTokens(tr)
-    return tr
 }
 
 export const getAuthHeader = (): Record<string, string> => {
@@ -162,12 +187,8 @@ export const logout = (redirectTo?: string) => {
 }
 
 export const refreshToken = async (): Promise<boolean> => {
-    if (!BACKEND_EXCHANGE) {
-        console.warn("No BACKEND_EXCHANGE configured for refresh tokens.")
-        return false
-    }
     try {
-        const res = await fetch(`${BACKEND_EXCHANGE}/refresh`, {
+        const res = await fetch(`${BACKEND_OAUTH_BASE}/refresh`, {
             method: "POST",
             credentials: "include",
         })
