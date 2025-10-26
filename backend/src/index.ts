@@ -28,6 +28,7 @@ console.log('OAuth config: client_id present=', !!OAUTH_CLIENT_ID, 'client_secre
 
 import './db.js'
 import Pokemon from './models/Pokemon.js'
+import User from './models/User.js'
 
 app.get('/', (_req: Request, res: Response) => {
   res.status(200).send('Backend is running!!!')
@@ -36,19 +37,68 @@ app.get('/', (_req: Request, res: Response) => {
 app.post('/api/login', (req: Request, res: Response) => {
   const { username, password } = (req.body || {}) as { username?: string; password?: string }
   if (!username || !password) return res.status(400).json({ error: 'username and password required' })
+  ;(async () => {
+    try {
+      const existing = await User.findOne({ where: { username } })
+      if (existing) {
+        const bcrypt = await import('bcryptjs')
+        const ok = await bcrypt.compare(password, existing.passwordHash)
+        if (!ok) return res.status(401).json({ error: 'invalid credentials' })
+        const user = { sub: username, name: username }
+        const token = jwt.sign(
+          user as object,
+          JWT_SECRET as unknown as jwt.Secret,
+          { expiresIn: JWT_EXPIRES_IN as string } as jwt.SignOptions
+        )
+        res.cookie('access_token', token, { httpOnly: true, secure: false, maxAge: 1000 * 60 * 60 })
+        return res.json({ access_token: token, token_type: 'Bearer', expires_in: JWT_EXPIRES_IN })
+      }
 
-  const allowedPassword = process.env.DEMO_PASSWORD || 'password'
-  if (password !== allowedPassword) return res.status(401).json({ error: 'invalid credentials' })
+      const allowedPassword = process.env.DEMO_PASSWORD || 'password'
+      if (password !== allowedPassword) return res.status(401).json({ error: 'invalid credentials' })
 
-  const user = { sub: username, name: username }
-  const token = jwt.sign(
-    user as object,
-    JWT_SECRET as unknown as jwt.Secret,
-    { expiresIn: JWT_EXPIRES_IN as string } as jwt.SignOptions
-  )
+      const user = { sub: username, name: username }
+      const token = jwt.sign(
+        user as object,
+        JWT_SECRET as unknown as jwt.Secret,
+        { expiresIn: JWT_EXPIRES_IN as string } as jwt.SignOptions
+      )
 
-  res.cookie('access_token', token, { httpOnly: true, secure: false, maxAge: 1000 * 60 * 60 })
-  return res.json({ access_token: token, token_type: 'Bearer', expires_in: JWT_EXPIRES_IN })
+      res.cookie('access_token', token, { httpOnly: true, secure: false, maxAge: 1000 * 60 * 60 })
+      return res.json({ access_token: token, token_type: 'Bearer', expires_in: JWT_EXPIRES_IN })
+    } catch (err: any) {
+      console.error('login error', err?.toString())
+      return res.status(500).json({ error: 'login failed' })
+    }
+  })()
+})
+
+app.post('/api/register', async (req: Request, res: Response) => {
+  const { username, password } = (req.body || {}) as { username?: string; password?: string }
+  if (!username || !password) return res.status(400).json({ error: 'username and password required' })
+  if (password.length < 4) return res.status(400).json({ error: 'password must be at least 4 characters' })
+
+  try {
+    const existing = await User.findOne({ where: { username } })
+    if (existing) return res.status(409).json({ error: 'user already exists' })
+
+    const bcrypt = await import('bcryptjs')
+    const saltRounds = 10
+    const hash = await bcrypt.hash(password, saltRounds)
+    await User.create({ username, passwordHash: hash })
+
+    const user = { sub: username, name: username }
+    const token = jwt.sign(
+      user as object,
+      JWT_SECRET as unknown as jwt.Secret,
+      { expiresIn: JWT_EXPIRES_IN as string } as jwt.SignOptions
+    )
+    res.cookie('access_token', token, { httpOnly: true, secure: false, maxAge: 1000 * 60 * 60 })
+    return res.json({ access_token: token, token_type: 'Bearer', expires_in: JWT_EXPIRES_IN })
+  } catch (err: any) {
+    console.error('register error', err?.toString())
+    return res.status(500).json({ error: 'registration failed' })
+  }
 })
 
 app.post('/api/oauth/exchange', async (req: Request, res: Response) => {

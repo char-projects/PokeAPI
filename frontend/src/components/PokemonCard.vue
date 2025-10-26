@@ -1,6 +1,6 @@
 <template>
   <div
-      class="border rounded-lg shadow-sm bg-white overflow-hidden hover:shadow-md transition-shadow"
+    class="border rounded-lg shadow-sm bg-neutral-800 overflow-hidden hover:shadow-md transition-shadow text-white"
   >
     <img
         :src="image"
@@ -12,13 +12,13 @@
       <h3 class="font-semibold text-lg truncate">
         {{ name || 'Unnamed Pokémon' }}
       </h3>
-      <p class="text-gray-500 text-sm mt-1">
+      <p class="text-gray-300 text-sm mt-1">
         {{ description || 'AI-generated creature' }}
       </p>
 
       <button
           @click="$emit('share', image)"
-          class="mt-3 px-4 py-1.5 text-sm border rounded-md hover:bg-gray-100 transition-colors"
+          class="mt-3 px-4 py-1.5 text-sm border border-white/20 rounded-md hover:bg-white/5 transition-colors"
       >
         Share
       </button>

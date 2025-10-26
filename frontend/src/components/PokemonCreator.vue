@@ -5,14 +5,14 @@
     <form @submit.prevent="onSubmit" class="space-y-4">
       <div>
         <label class="block text-sm">Base animal</label>
-        <select v-model="base" class="w-full border rounded p-2">
+  <select v-model="base" class="w-full border rounded p-2 bg-white text-black">
           <option v-for="opt in animals" :key="opt" :value="opt">{{ opt }}</option>
         </select>
       </div>
 
       <div>
         <label class="block text-sm">Ability</label>
-        <select v-model="ability" class="w-full border rounded p-2">
+  <select v-model="ability" class="w-full border rounded p-2 bg-white text-black">
           <option v-for="a in abilities" :key="a" :value="a">{{ a }}</option>
         </select>
       </div>

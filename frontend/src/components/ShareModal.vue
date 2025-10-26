@@ -5,12 +5,12 @@
       @click.self="close"
   >
   <div
-    class="bg-white rounded-xl shadow-lg w-11/12 max-w-sm p-6 relative transition-transform transition-opacity duration-200 ease-out"
+    class="bg-neutral-800 rounded-xl shadow-lg w-11/12 max-w-sm p-6 relative transition-transform transition-opacity duration-200 ease-out text-white"
   >
       <button
           @click="close"
           aria-label="Close modal"
-          class="absolute top-3 right-3 text-gray-400 hover:text-gray-700"
+          class="absolute top-3 right-3 text-gray-300 hover:text-white"
       >
         ✕
       </button>
@@ -26,14 +26,14 @@
       <div class="space-y-3 text-center">
         <button
             @click="copyLink"
-            class="w-full border rounded-md py-2 hover:bg-gray-100"
+            class="w-full border border-white/20 rounded-md py-2 hover:bg-white/5"
         >
           Copy Image Link
         </button>
 
         <button
             @click="downloadImage"
-            class="w-full border rounded-md py-2 hover:bg-gray-100"
+            class="w-full border border-white/20 rounded-md py-2 hover:bg-white/5"
         >
           Download Image
         </button>
@@ -41,7 +41,7 @@
         <button
             v-if="canShare"
             @click="shareNative"
-            class="w-full border rounded-md py-2 hover:bg-gray-100"
+            class="w-full border border-white/20 rounded-md py-2 hover:bg-white/5"
         >
           Share via Device
         </button>

@@ -16,7 +16,8 @@ export const sequelize = new Sequelize({
 export const connectAndSync = async () => {
   try {
     await sequelize.authenticate()
-    console.log('Database connected at', storage)
+    await sequelize.sync()
+    console.log('Database connected and synced at', storage)
   } catch (err) {
     console.error('Failed to connect or sync DB', err)
     throw err
