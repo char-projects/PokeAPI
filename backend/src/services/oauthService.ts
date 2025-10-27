@@ -10,7 +10,7 @@ export const exchangeToken = async (code: string, redirect_uri: string, code_ver
     client_id: OAUTH_CLIENT_ID,
     code_verifier,
   })
-  if (OAUTH_CLIENT_SECRET) body.set('client_secret', OAUTH_CLIENT_SECRET)
+  // if (OAUTH_CLIENT_SECRET) body.set('client_secret', OAUTH_CLIENT_SECRET)
 
   const r = await axios.post(OAUTH_TOKEN_URL, body.toString(), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
   return r.data

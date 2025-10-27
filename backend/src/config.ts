@@ -17,7 +17,7 @@ export const OAUTH_CLIENT_ID = get('OAUTH_CLIENT_ID')
 export const OAUTH_CLIENT_SECRET = get('OAUTH_CLIENT_SECRET')
 export const OAUTH_TOKEN_URL = get('OAUTH_TOKEN_URL')
 export const OAUTH_AUTHORIZE_URL = get('OAUTH_AUTHORIZE_URL')
-export const OAUTH_CALLBACK_URL = get('OAUTH_CALLBACK_URL', `http://localhost:${PORT}/api/oauth/callback`)
+export const OAUTH_CALLBACK_URL = get('OAUTH_CALLBACK_URL')
 export const FRONTEND_ORIGIN = get('FRONTEND_ORIGIN', 'http://localhost:5173')
 
 if ( !JWT_SECRET) {

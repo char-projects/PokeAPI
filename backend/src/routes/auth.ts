@@ -89,28 +89,17 @@ router.get('/oauth/start', (req, res) => {
 })
 
 router.get('/oauth/callback', async (req, res) => {
-	const code = req.query.code as string | undefined
-	const state = req.query.state as string | undefined
-	const stored = req.cookies?.oauth_state
-	if (!code) return res.status(400).send('Missing code')
-	if (!stored || !state || stored !== state) return res.status(400).send('Invalid state')
-	try {
-		const { exchangeToken } = await import('../services/oauthService.js')
-		const tr = await exchangeToken(code, OAUTH_CALLBACK_URL as string, '')
-		const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
-		if (tr.access_token) res.cookie('access_token', tr.access_token, { httpOnly: true, secure: secureFlag, sameSite: 'lax' })
-		if (tr.refresh_token) res.cookie('refresh_token', tr.refresh_token, { httpOnly: true, secure: secureFlag, sameSite: 'lax' })
-		res.clearCookie('oauth_state')
-		const frontendBase = (FRONTEND_ORIGIN || 'http://localhost:5173')
-		if (tr.access_token) {
-			const frag = `?access_token=${tr.access_token}`
-			return res.redirect(frontendBase + '/create' + frag)
-		}
-		return res.redirect(frontendBase + '/create')
-	} catch (err: any) {
-		console.error('oauth callback failed', err?.response || err)
-		return res.status(err?.response?.status || 500).send('OAuth callback failed')
-	}
+  const code = req.query.code as string | undefined
+  const state = req.query.state as string | undefined
+  const stored = req.cookies?.oauth_state
+  if (!code) return res.status(400).send('Missing code')
+  if (!stored || !state || stored !== state) return res.status(400).send('Invalid state')
+
+  res.clearCookie('oauth_state')
+
+  const frontendBase = FRONTEND_ORIGIN || 'http://localhost:5173'
+  const redirectUrl = `${frontendBase}/auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
+  return res.redirect(redirectUrl)
 })
 
 export default router
