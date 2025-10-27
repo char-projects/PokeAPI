@@ -15,21 +15,33 @@
 
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
-import { handleRedirectCallback } from '../services/auth'
-import { useRouter } from 'vue-router'
+// import { handleRedirectCallback } from '../services/auth'
+import { useRoute, useRouter } from 'vue-router'
+import { LS_KEY } from '../services/auth'
 
 const router = useRouter()
+const route = useRoute()
 const error = ref('')
 const callbackUrl = ref(window.location.href)
 
 onMounted(async () => {
   try {
-    const tr = await handleRedirectCallback()
-    if (tr) {
+    const accessToken = route.query.access_token as string
+    if (accessToken) {
+      // Debug: log access token received in query
+      console.debug('[AuthCallback] access_token received in query:', accessToken.slice(0, 20))
+      // Optionally, you could store the token here or trigger further actions
+      localStorage.setItem(LS_KEY.ACCESS, accessToken)
       router.replace({ path: '/create', query: {} })
     } else {
-      error.value = 'No authorization code found or token exchange failed. Please try signing in again.'
+      error.value = 'No access token found in callback URL. Please try signing in again.'
     }
+    // const tr = await handleRedirectCallback()
+    // if (tr) {
+    //   router.replace({ path: '/create', query: {} })
+    // } else {
+    //   error.value = 'No authorization code found or token exchange failed. Please try signing in again.'
+    // }
   } catch (err: any) {
     console.error('Callback handling failed', err)
     error.value = err?.message || 'Sign-in failed'

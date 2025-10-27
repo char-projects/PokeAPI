@@ -13,7 +13,7 @@ export class Pokemon extends Model {
 Pokemon.init(
   {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },

@@ -3,7 +3,7 @@ import Creator from '../views/Creator.vue'
 import Login from '../views/Login.vue'
 import MyPokemons from '../views/MyPokemons.vue'
 import AuthCallback from '../views/AuthCallback.vue'
-import { isAuthenticated } from '../services/auth'
+import { getCurrentUser } from '../services/auth'
 
 const routes = [
     { path: '/', redirect: '/login' },
@@ -18,8 +18,9 @@ const router = createRouter({
     routes,
 })
 
-router.beforeEach((to, _from, next) => {
-    const authed = isAuthenticated()
+router.beforeEach(async (to, _from, next) => {
+    const user = await getCurrentUser()
+    const authed = !!user
     if (to.name === 'auth-callback' || to.name === 'login') {
         if (to.name === 'login' && authed) return next({ name: 'create' })
         return next()

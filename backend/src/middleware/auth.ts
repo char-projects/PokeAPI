@@ -3,6 +3,12 @@ import { verifyJwt } from '../utils/jwt.js'
 
 export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
   const auth = (req.headers.authorization as string) || ''
+  // Debugging: log incoming auth header and cookies when authorization fails
+  if (!auth) {
+    console.debug('[auth] no Authorization header. cookies.access_token=', (req as any).cookies?.access_token)
+  } else {
+    console.debug('[auth] Authorization header present (first 20 chars)=', auth.slice(0, 20))
+  }
   let token: string | null = null
   if (auth.startsWith('Bearer ')) token = auth.slice(7)
   if (!token && (req as any).cookies && (req as any).cookies.access_token) token = (req as any).cookies.access_token

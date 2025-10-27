@@ -1,19 +1,11 @@
 import axios, { AxiosError } from "axios"
-import { getAuthHeader, refreshToken } from "./auth"
+import { refreshToken } from "./auth"
 
-const base = import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_URL ?? ''
+const base = import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 const api = axios.create({
     baseURL: base,
     timeout: 120000,
     withCredentials: true,
-})
-
-api.interceptors.request.use((config) => {
-    const auth = getAuthHeader()
-    if (auth) {
-        config.headers = { ...(config.headers as any), ...auth }
-    }
-    return config
 })
 
 api.interceptors.response.use(
@@ -23,10 +15,13 @@ api.interceptors.response.use(
         if (error.response && error.response.status === 401 && originalRequest && !originalRequest._retry) {
             originalRequest._retry = true
             try {
+                const isCrossOrigin = (typeof window !== 'undefined') && (new URL(api.defaults.baseURL as string).origin !== window.location.origin)
+                const hasStoredRefresh = (typeof window !== 'undefined') && !!localStorage.getItem('poke_refresh_token')
+                if (isCrossOrigin && !hasStoredRefresh) {
+                    return Promise.reject(error)
+                }
                 const ok = await refreshToken()
                 if (ok) {
-                    const auth = getAuthHeader()
-                    if (auth) originalRequest.headers = { ...(originalRequest.headers as any), ...auth }
                     return api.request(originalRequest)
                 }
             } catch (e) {

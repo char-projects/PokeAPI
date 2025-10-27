@@ -2,17 +2,17 @@ import { Model, DataTypes } from 'sequelize'
 import sequelize from '../db.js'
 
 export class User extends Model {
-  public id!: number
-  public username!: string
-  public passwordHash!: string
-  public readonly createdAt!: Date
-  public readonly updatedAt!: Date
+  declare id: number
+  declare username: string
+  declare passwordHash: string
+  declare readonly createdAt: Date
+  declare readonly updatedAt: Date
 }
 
 User.init(
   {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },

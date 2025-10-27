@@ -26,9 +26,8 @@ app.use('/api', authRouter)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const shouldServeFrontend = process.env.SERVE_FRONTEND === 'true' || process.env.NODE_ENV === 'production'
 const distPath = path.resolve(__dirname, '../../frontend/dist')
-if (shouldServeFrontend && fs.existsSync(distPath)) {
+if (fs.existsSync(distPath)) {
   app.use(express.static(distPath))
 
   app.get('*', (req, res, next) => {

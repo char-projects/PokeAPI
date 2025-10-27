@@ -11,26 +11,26 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { isAuthenticated, logout, getAccessToken, decodeJwt } from '../services/auth'
+import { getCurrentUser, logout } from '../services/auth'
 
 const router = useRouter()
+const authed = ref(false)
+const userName = ref<string | null>(null)
 
-const authed = computed(() => isAuthenticated())
-
-const token = computed(() => getAccessToken())
-const userName = computed(() => {
-  const dec = decodeJwt(token.value || undefined)
-  return dec?.name || dec?.preferred_username || dec?.email || null
+onMounted(async () => {
+  const user = await getCurrentUser()
+  authed.value = !!user
+  if (user) userName.value = user.name || user.preferred_username || user.email || null
 })
 
 const goToLogin = () => {
   router.push({ name: 'login' })
 }
 
-const signout = () => {
-  logout('/')
+const signout = async () => {
+  await logout('/')
   router.replace('/')
 }
 </script>

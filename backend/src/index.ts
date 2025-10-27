@@ -50,7 +50,8 @@ app.post('/api/login', (req: Request, res: Response) => {
           JWT_SECRET as unknown as jwt.Secret,
           { expiresIn: JWT_EXPIRES_IN as string } as jwt.SignOptions
         )
-        res.cookie('access_token', token, { httpOnly: true, secure: false, maxAge: 1000 * 60 * 60 })
+        const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
+        res.cookie('access_token', token, { httpOnly: true, secure: secureFlag, maxAge: 1000 * 60 * 60 })
         return res.json({ access_token: token, token_type: 'Bearer', expires_in: JWT_EXPIRES_IN })
       }
 
@@ -64,7 +65,8 @@ app.post('/api/login', (req: Request, res: Response) => {
         { expiresIn: JWT_EXPIRES_IN as string } as jwt.SignOptions
       )
 
-      res.cookie('access_token', token, { httpOnly: true, secure: false, maxAge: 1000 * 60 * 60 })
+      const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
+      res.cookie('access_token', token, { httpOnly: true, secure: secureFlag, maxAge: 1000 * 60 * 60 })
       return res.json({ access_token: token, token_type: 'Bearer', expires_in: JWT_EXPIRES_IN })
     } catch (err: any) {
       console.error('login error', err?.toString())
@@ -93,7 +95,8 @@ app.post('/api/register', async (req: Request, res: Response) => {
       JWT_SECRET as unknown as jwt.Secret,
       { expiresIn: JWT_EXPIRES_IN as string } as jwt.SignOptions
     )
-    res.cookie('access_token', token, { httpOnly: true, secure: false, maxAge: 1000 * 60 * 60 })
+    const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
+    res.cookie('access_token', token, { httpOnly: true, secure: secureFlag, maxAge: 1000 * 60 * 60 })
     return res.json({ access_token: token, token_type: 'Bearer', expires_in: JWT_EXPIRES_IN })
   } catch (err: any) {
     console.error('register error', err?.toString())
@@ -122,8 +125,9 @@ app.post('/api/oauth/exchange', async (req: Request, res: Response) => {
 
     const r = await axios.post(OAUTH_TOKEN_URL, body.toString(), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
     const tr = r.data
-    if (tr.access_token) res.cookie('access_token', tr.access_token, { httpOnly: true, secure: false })
-    if (tr.refresh_token) res.cookie('refresh_token', tr.refresh_token, { httpOnly: true, secure: false })
+  const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
+  if (tr.access_token) res.cookie('access_token', tr.access_token, { httpOnly: true, secure: secureFlag })
+  if (tr.refresh_token) res.cookie('refresh_token', tr.refresh_token, { httpOnly: true, secure: secureFlag })
     return res.json(tr)
   } catch (err: any) {
     console.error('oauth exchange failed', err?.toString())
@@ -154,8 +158,9 @@ app.post('/api/oauth/refresh', async (req: Request, res: Response) => {
 
     const r = await axios.post(OAUTH_TOKEN_URL, body.toString(), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
     const tr = r.data
-    if (tr.access_token) res.cookie('access_token', tr.access_token, { httpOnly: true, secure: false })
-    if (tr.refresh_token) res.cookie('refresh_token', tr.refresh_token, { httpOnly: true, secure: false })
+  const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
+  if (tr.access_token) res.cookie('access_token', tr.access_token, { httpOnly: true, secure: secureFlag })
+  if (tr.refresh_token) res.cookie('refresh_token', tr.refresh_token, { httpOnly: true, secure: secureFlag })
     return res.json(tr)
   } catch (err: any) {
     console.error('oauth refresh failed', err?.toString())
@@ -250,6 +255,17 @@ app.post('/api/pokemons', async (req, res) => {
     console.error('failed to save pokemon', err?.toString())
     res.status(500).json({ error: 'failed to save data', details: err.message })
   }
+})
+
+app.post('/api/logout', (req: Request, res: Response) => {
+    try {
+    const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
+    res.clearCookie('access_token', { httpOnly: true, secure: secureFlag, sameSite: 'lax' })
+    res.clearCookie('refresh_token', { httpOnly: true, secure: secureFlag, sameSite: 'lax' })
+  } catch (e) {
+    // ignore
+  }
+  return res.json({ ok: true })
 })
 
 app.listen(PORT, () => {

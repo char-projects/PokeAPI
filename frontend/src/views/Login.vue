@@ -43,11 +43,12 @@
 </template>
 
 <script lang="ts" setup>
-import { loginWithPKCE } from '../services/auth'
 import { ref } from 'vue'
+import api from '../services/api'
 
 const login = () => {
-  loginWithPKCE()
+  const backend = import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+  window.location.href = `${backend.replace(/\/$/, '')}/api/oauth/start`
 }
 
 const username = ref('')
@@ -71,25 +72,11 @@ const localLogin = async () => {
   if (usernameError.value || passwordError.value) return
 
   try {
-    const res = await fetch('http://localhost:3000/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username.value, password: password.value }),
-      credentials: 'include',
-    })
-    const text = await res.text()
-    if (!res.ok) {
-      message.value = `Login failed: ${text}`
-      return
-    }
-    const data = JSON.parse(text)
-    if (rememberMe.value && data.access_token) {
-      localStorage.setItem('poke_access_token', data.access_token)
-    }
+  await api.post('/api/login', { username: username.value, password: password.value })
     message.value = 'Signed in successfully'
     setTimeout(() => (window.location.href = '/'), 500)
   } catch (err: any) {
-    message.value = String(err?.message || err)
+    message.value = `Login failed`
   }
 }
 
@@ -106,23 +93,11 @@ const localRegister = async () => {
   if (usernameError.value || passwordError.value) return
 
   try {
-      const res = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: username.value, password: password.value }),
-      credentials: 'include',
-    })
-    const text = await res.text()
-    if (!res.ok) {
-      message.value = `Register failed: ${text}`
-      return
-    }
-    const data = JSON.parse(text)
-    if (rememberMe.value && data.access_token) localStorage.setItem('poke_access_token', data.access_token)
+    await api.post('/api/register', { username: username.value, password: password.value })
     message.value = 'Registered successfully'
     setTimeout(() => (window.location.href = '/'), 500)
   } catch (err: any) {
-    message.value = String(err?.message || err)
+    message.value = `Register failed`
   }
 }
 </script>
