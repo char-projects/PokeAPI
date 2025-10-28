@@ -16,7 +16,7 @@ The app lets users design entirely new Pokémon by mixing and matching different
     - Keyboard navigability
     - Color contrast compliance 
 -  **SPA Navigation** that supports browser back/forward buttons without full reloads  
--  **Dockerized Environment** using **Docker** and **Docker Compose**.  
+-  **Dockerized Environment** using **Docker** and **Docker Compose**  
 
 ---
 
@@ -59,7 +59,7 @@ How to add the missing values:
 openssl rand -hex 32
 ```
 
--> Google OAuth:
+- Google OAuth:
     1. Open this URL in your browser: https://console.cloud.google.com/
     2. Sign in with your Google account
     3. Create a new project: click the project selector (top-left) → NEW PROJECT → give it a name (e.g. "PokeAPI") → CREATE. Switch to the new project
@@ -80,7 +80,7 @@ openssl rand -hex 32
 - OAUTH_CLIENT_ID=<paste the Client ID exactly here>
 - OAUTH_CLIENT_SECRET=<paste the Client secret exactly here>
 
--> Stable Diffusion / image provider:
+- Stable Diffusion / image provider:
     Option 1 — Local Automatic1111 WebUI:
     1. If you run the WebUI locally, its default URL is: http://localhost:7860
     2. If that server is running, in `backend/.env` set:
