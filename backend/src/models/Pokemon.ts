@@ -2,12 +2,12 @@ import { Model, DataTypes } from 'sequelize'
 import sequelize from '../db.js'
 
 export class Pokemon extends Model {
-  public id!: number
-  public name!: string
-  public description?: string
-  public imageUrl?: string
-  public readonly createdAt!: Date
-  public readonly updatedAt!: Date
+  declare id: number
+  declare name: string
+  declare description?: string
+  declare imageUrl?: string
+  declare readonly createdAt: Date
+  declare readonly updatedAt: Date
 }
 
 Pokemon.init(

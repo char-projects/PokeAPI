@@ -10,7 +10,6 @@ export type TokenResponse = {
 
 export const LS_KEY = {
     ACCESS: 'poke_access_token',
-    REFRESH: 'poke_refresh_token',
     EXPIRES_AT: 'poke_token_expires_at',
     USER: 'poke_user',
 }
@@ -28,41 +27,38 @@ const initFromHash = () => {
             const params = new URLSearchParams(hash.replace(/^#/, ''))
             const token = params.get('access_token')
             if (token) {
-                console.debug('[auth] fragment token found, exchanging with backend')
                 try {
                     const res = await api.post(`${BACKEND_OAUTH_BASE}/complete`, { access_token: token })
                     const tr: TokenResponse = res.data
-                    console.debug('[auth] backend /oauth/complete response:', { has_access_token: !!tr?.access_token, user: (tr as any)?.user })
                     saveTokens(tr)
-                } catch (err: any) {
-                    console.debug('[auth] backend /oauth/complete failed:', err?.response?.status, err?.response?.data)
-                }
+                } catch (err: any) {}
                 history.replaceState(null, '', window.location.pathname + window.location.search)
             }
-        } catch (e) {
-            // ignore
-        }
+        } catch (e) {}
     })()
     return initPromise
 }
 
 const saveTokens = (tr: TokenResponse | null) => {
     if (!tr) {
-        localStorage.removeItem(LS_KEY.ACCESS)
-        localStorage.removeItem(LS_KEY.REFRESH)
-        delete (api.defaults.headers as any).common['Authorization']
+        try {
+            localStorage.clear()
+            sessionStorage.clear()
+        } catch {}
+        try { delete (api.defaults.headers as any).common['Authorization'] } catch {}
         return
     }
     if (tr.access_token) {
-        localStorage.setItem(LS_KEY.ACCESS, tr.access_token)
+        try { localStorage.setItem(LS_KEY.ACCESS, tr.access_token) } catch {}
         ;(api.defaults.headers as any).common['Authorization'] = `Bearer ${tr.access_token}`
-    }
-    if (tr.refresh_token) {
-        localStorage.setItem(LS_KEY.REFRESH, tr.refresh_token)
     }
 }
 
 export const loginWithProvider = async () => {
+    saveTokens(null)
+    try { localStorage.clear(); } catch {}
+    try { sessionStorage.clear(); } catch {}
+    try { delete (api.defaults.headers as any).common['Authorization'] } catch {}
     const backend = import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
     window.location.href = `${backend.replace(/\/$/, '')}/api/oauth/start`
 }
@@ -86,14 +82,24 @@ export const isAuthenticated = async (): Promise<boolean> => {
     return !!u
 }
 
-export const logout = async (redirectTo?: string) => {
+export const logout = async () => {
     try {
         await api.post('/api/logout')
-    } catch (e) {
-        // ignore
-    }
+    } catch (e) {}
     saveTokens(null)
-    if (redirectTo) window.location.href = redirectTo
+    try {
+        localStorage.clear()
+        sessionStorage.clear()
+    } catch (e) {}
+    try {
+        delete (api.defaults.headers as any).common['Authorization']
+    } catch (e) {}
+    try { window.dispatchEvent(new Event('auth-changed')) } catch (e) {}
+}
+
+export const logoutAndRedirect = async () => {
+    await logout()
+    try { window.location.href = '/login?message=' + encodeURIComponent('Signed out successfully') } catch (e) {}
 }
 
 export const refreshToken = async (): Promise<boolean> => {

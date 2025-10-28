@@ -6,7 +6,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import apiRouter from './routes/api.js'
 import authRouter from './routes/auth.js'
-import { FRONTEND_ORIGIN } from './config.js'
+import { FRONTEND_ORIGIN, DATA_DIR } from './config.js'
 
 const app = express()
 app.use(
@@ -22,6 +22,12 @@ app.get('/', (_req, res) => res.status(200).send('Backend is running'))
 
 app.use('/api', apiRouter)
 app.use('/api', authRouter)
+
+try {
+  app.use('/data', express.static(DATA_DIR))
+} catch (e) {
+  console.warn('Failed to mount /data static route', e)
+}
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

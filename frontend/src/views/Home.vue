@@ -30,7 +30,7 @@ const goToLogin = () => {
 }
 
 const signout = async () => {
-  await logout('/')
+  await logout()
   router.replace('/')
 }
 </script>

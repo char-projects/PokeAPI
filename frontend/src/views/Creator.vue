@@ -1,9 +1,15 @@
 <template>
   <div class="max-w-3xl w-full mx-auto p-10 bg-neutral-900 border border-white/10 rounded-2xl shadow-lg text-white">
-    <h2 class="text-2xl font-bold mb-4 text-center">Create your Pokémon</h2>
-    <div class="flex items-center gap-4">
-        <router-link to="/mypokemons" class="text-white hover:underline">My Pokémons</router-link>
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <button @click="goToMyPokemons" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">My Pokémons</button>
+      </div>
+      <div>
+        <button @click="onLogout" class="px-3 py-1 border rounded bg-red-600 hover:bg-red-700 text-white">Logout</button>
+      </div>
     </div>
+
+    <h2 class="text-2xl font-bold mb-4 text-center">Create your Pokémon</h2>
 
   <div>
     <div class="mb-4">
@@ -23,7 +29,7 @@
         </div>
 
         <div>
-          <label class="block text-md font-medium mb-2">Ability</label>
+          <label class="block text-md font-medium my-2">Ability</label>
           <select v-model="ability" class="w-full border rounded-lg p-3 text-lg bg-white text-black focus:outline-none focus:ring-2 focus:ring-blue-400">
             <option v-for="a in abilities" :key="a" :value="a">{{ a }}</option>
           </select>
@@ -46,30 +52,48 @@
 
   <div v-if="error" class="mt-4 text-sm text-red-400">{{ error }}</div>
 
+  <div v-if="toastMessage" class="fixed right-6 bottom-6 z-50">
+    <div :class="['px-4 py-2 rounded shadow', toastSuccess ? 'bg-green-600 text-white' : 'bg-yellow-600 text-white']">
+      {{ toastMessage }}
+    </div>
+  </div>
+
   <div v-if="imageUrl" class="mt-8 flex flex-col items-center gap-6">
       <div class="w-full max-w-xl">
         <PokemonCard :image="imageUrl" :name="name" :description="description" @share="openShareModal" />
       </div>
 
       <div class="w-full max-w-xl flex flex-col sm:flex-row gap-4 justify-center">
-        <button class="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg text-lg" @click="savePokemon">Save</button>
+        <button class="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg text-lg disabled:opacity-50" @click="savePokemon" :disabled="saved || loading">
+          {{ saved ? 'Saved' : 'Save' }}
+        </button>
         <button class="flex-1 px-6 py-3 border rounded-lg text-lg" @click="download">Download</button>
       </div>
     </div>
 
-    <ShareModal v-if="modalOpen" :open="modalOpen" :image="imageUrl" @close="closeShareModal" />
+  <ShareModal v-if="modalOpen" :open="modalOpen" :image="imageUrl" :name="name" :description="description" @close="closeShareModal" @saved="onSharedSaved" />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { generateImage, createPokemon } from '../services/api'
-import { getCurrentUser, loginWithProvider } from '../services/auth'
+import { getCurrentUser, loginWithProvider, logoutAndRedirect } from '../services/auth'
+import { useRouter } from 'vue-router'
 import PokemonCard from '../components/PokemonCard.vue'
 import ShareModal from '../components/ShareModal.vue'
 
-const animals = ['fox','owl','turtle','butterfly','lion','rabbit','snake','eagle']
-const abilities = ['fire','water','electric','psychic','ice','earth','ghost']
+const animals = [
+  'Bulbasaur','Charmander','Squirtle','Pikachu','Eevee','Pidgey','Rattata','Jigglypuff',
+  'Meowth','Psyduck','Geodude','Snorlax','Dragonite','Magikarp','Vulpix','Growlithe',
+  'Butterfree','Zubat','Oddish','Bellsprout','Sandslash','Rat','Fox','Owl','Turtle'
+]
+
+const abilities = [
+  'Normal','Fire','Water','Electric','Grass','Ice','Fighting','Poison','Ground','Flying',
+  'Psychic','Bug','Rock','Ghost','Dragon','Dark','Steel','Fairy',
+  'Overgrow','Blaze','Torrent','Static','Intimidate','Levitate','Swift Swim','Chlorophyll'
+]
 
 const base = ref(animals[0])
 const ability = ref(abilities[0])
@@ -77,6 +101,7 @@ const selectedTab = ref<'composer' | 'prompt'>('composer')
 const promptText = ref('')
 const loading = ref(false)
 const imageUrl = ref('')
+const saved = ref(false)
 const modalOpen = ref(false)
 const error = ref('')
 
@@ -95,6 +120,7 @@ const description = computed(() => {
 const onSubmit = async () => {
   loading.value = true
   imageUrl.value = ''
+  saved.value = false
   error.value = ''
   try {
     const prompt = selectedTab.value === 'prompt' && promptText.value
@@ -113,6 +139,17 @@ const onSubmit = async () => {
   }
 }
 
+const toastMessage = ref('')
+const toastSuccess = ref(false)
+const showToast = (msg: string, success = true, ms = 3000) => {
+  toastMessage.value = msg
+  toastSuccess.value = success
+  setTimeout(() => {
+    toastMessage.value = ''
+    toastSuccess.value = false
+  }, ms)
+}
+
 const openShareModal = () => { modalOpen.value = true }
 const closeShareModal = () => { modalOpen.value = false }
 
@@ -123,6 +160,7 @@ const reset = () => {
   error.value = ''
   promptText.value = ''
   selectedTab.value = 'composer'
+  saved.value = false
 }
 
 const savePokemon = async () => {
@@ -133,24 +171,93 @@ const savePokemon = async () => {
     return
   }
   try {
-    await createPokemon({ name: name.value, description: description.value, imageUrl: imageUrl.value })
-    alert('Saved Pokémon successfully!')
+    const created = await createPokemon({ name: name.value, description: description.value, imageUrl: imageUrl.value })
+  saved.value = true
+  if (created && created.imageUrl) imageUrl.value = created.imageUrl
+  showToast('Saved Pokémon successfully!', true)
   } catch (err) {
     console.error('Save failed', err)
-    alert('Failed to save Pokémon. Make sure you are signed in and try again.')
+    showToast('Failed to save Pokémon. Make sure you are signed in and try again.', false)
   }
 }
 
 const download = () => {
   if (!imageUrl.value) return
-  const a = document.createElement('a')
-  a.href = imageUrl.value
-  a.download = `${name.value}.png`
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
+  const doAnchorDownload = (href: string) => {
+    const a = document.createElement('a')
+    a.href = href
+    a.download = `${name.value}.png`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+
+  ;(async () => {
+    try {
+      if (imageUrl.value.startsWith('data:')) {
+        doAnchorDownload(imageUrl.value)
+        return
+      }
+      let url = imageUrl.value
+      try {
+        if (url.startsWith('/data/')) {
+          url = `${window.location.protocol}//${window.location.host}${url}`
+        }
+      } catch (e) {}
+
+      const resp = await fetch(url, { credentials: 'include' })
+      if (!resp.ok) {
+        window.open(url, '_blank')
+        return
+      }
+      const blob = await resp.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      doAnchorDownload(blobUrl)
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
+    } catch (e) {
+      try {
+        window.open(imageUrl.value, '_blank')
+      } catch (e2) {
+        console.error('Download failed', e2)
+      }
+    }
+  })()
+}
+
+const onLogout = () => {
+  logoutAndRedirect().catch(() => { window.location.href = '/login' })
+}
+
+const router = useRouter()
+
+const goToMyPokemons = async () => {
+  try {
+    await router.push({ name: 'mypokemons' })
+  } catch (e) {
+    try { await router.push('/mypokemons') } catch {}
+  }
+}
+
+onMounted(() => {
+  const handler = async () => {
+    try {
+      const u = await getCurrentUser()
+      if (!u) {
+        router.replace({ name: 'login' })
+      }
+    } catch (e) {}
+  }
+  window.addEventListener('auth-changed', handler)
+  handler()
+  onUnmounted(() => {
+    window.removeEventListener('auth-changed', handler)
+  })
+})
+
+const onSharedSaved = (created: any) => {
+  saved.value = true
+  if (created && created.imageUrl) imageUrl.value = created.imageUrl
+  showToast('Saved and copied shareable link!', true)
+  closeShareModal()
 }
 </script>
-
-<style scoped>
-</style>

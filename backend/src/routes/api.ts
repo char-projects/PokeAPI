@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { generateImage } from '../services/sdService.js'
-import { getPokemons, createPokemon } from '../controllers/pokemonController.js'
+import { getPokemons, createPokemon, getMyPokemons, deleteMyPokemon } from '../controllers/pokemonController.js'
 import { authenticateJWT } from '../middleware/auth.js'
 import { validateBody } from '../middleware/validate.js'
 import { generateSchema, pokemonSchema } from '../schemas.js'
@@ -29,5 +29,7 @@ router.post('/generate', generateLimiter, validateBody(generateSchema), async (r
 
 router.get('/pokemons', getPokemons)
 router.post('/pokemons', authenticateJWT, validateBody(pokemonSchema), createPokemon)
+router.get('/mypokemons', authenticateJWT, getMyPokemons)
+router.delete('/mypokemons/:id', authenticateJWT, deleteMyPokemon)
 
 export default router

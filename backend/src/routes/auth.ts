@@ -30,8 +30,8 @@ router.post('/login', async (req, res) => {
 			const jwtLib = (_jwt && (_jwt as any).default) ? (_jwt as any).default : _jwt
 			const token = jwtLib.sign(user as object, JWT_SECRET as unknown as any, { expiresIn: JWT_EXPIRES_IN as string } as any)
 			const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
-			res.cookie('access_token', token, { httpOnly: true, secure: secureFlag, maxAge: 1000 * 60 * 60 })
-			return res.json({ access_token: token, token_type: 'Bearer', expires_in: process.env.JWT_EXPIRES_IN || '1h' })
+				res.cookie('access_token', token, { httpOnly: true, secure: secureFlag, path: '/', sameSite: 'lax', maxAge: 1000 * 60 * 60 })
+				return res.json({ access_token: token, token_type: 'Bearer', expires_in: process.env.JWT_EXPIRES_IN || '1h' })
 		}
 
 		const allowedPassword = process.env.DEMO_PASSWORD || 'password'
@@ -42,8 +42,8 @@ router.post('/login', async (req, res) => {
 	const jwtLib = (_jwt && (_jwt as any).default) ? (_jwt as any).default : _jwt
 	const token = jwtLib.sign(user as object, JWT_SECRET as unknown as any, { expiresIn: JWT_EXPIRES_IN as string } as any)
         	const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
-        	res.cookie('access_token', token, { httpOnly: true, secure: secureFlag, maxAge: 1000 * 60 * 60 })
-		return res.json({ access_token: token, token_type: 'Bearer', expires_in: process.env.JWT_EXPIRES_IN || '1h' })
+			res.cookie('access_token', token, { httpOnly: true, secure: secureFlag, path: '/', sameSite: 'lax', maxAge: 1000 * 60 * 60 })
+			return res.json({ access_token: token, token_type: 'Bearer', expires_in: process.env.JWT_EXPIRES_IN || '1h' })
 	} catch (err: any) {
 		console.error('login error', err?.toString())
 		return res.status(500).json({ error: 'login failed' })
@@ -67,7 +67,7 @@ router.post('/register', async (req, res) => {
 	const jwtLib = (_jwt && (_jwt as any).default) ? (_jwt as any).default : _jwt
 	const token = jwtLib.sign(user as object, JWT_SECRET as unknown as any, { expiresIn: JWT_EXPIRES_IN as string } as any)
 		const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
-		res.cookie('access_token', token, { httpOnly: true, secure: secureFlag, maxAge: 1000 * 60 * 60 })
+		res.cookie('access_token', token, { httpOnly: true, secure: secureFlag, path: '/', sameSite: 'lax', maxAge: 1000 * 60 * 60 })
 		return res.json({ access_token: token, token_type: 'Bearer', expires_in: process.env.JWT_EXPIRES_IN || '1h' })
 	} catch (err: any) {
 		console.error('register error', err?.toString())
@@ -77,8 +77,9 @@ router.post('/register', async (req, res) => {
 
 router.get('/oauth/start', (req, res) => {
 	if (!OAUTH_AUTHORIZE_URL || !OAUTH_CLIENT_ID) return res.status(500).send('OAuth not configured')
+	try { res.clearCookie('access_token', { path: '/', sameSite: 'lax' }) } catch (e) {}
 	const state = crypto.randomBytes(12).toString('hex')
-	res.cookie('oauth_state', state, { maxAge: 5 * 60 * 1000, sameSite: 'lax' })
+	res.cookie('oauth_state', state, { maxAge: 5 * 60 * 1000, sameSite: 'lax', path: '/' })
 		const params = new URLSearchParams({
 		response_type: 'code',
 		client_id: OAUTH_CLIENT_ID as string,
@@ -121,6 +122,59 @@ router.get('/oauth/callback', async (req, res) => {
 			const redirectUrl = `${frontendBase}/auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state || '')}`
 			return res.redirect(redirectUrl)
 		}
+})
+
+router.post('/logout', async (req, res) => {
+	try {
+		const authHeader = (req.headers.authorization as string) || ''
+		let token: string | null = null
+		if (authHeader.startsWith('Bearer ')) token = authHeader.slice(7)
+		if (!token && (req as any).cookies && (req as any).cookies.access_token) token = (req as any).cookies.access_token
+		if (token) {
+			try {
+				const { verifyJwt } = await import('../utils/jwt.js')
+				const payload: any = verifyJwt(token)
+				const username = payload?.sub
+				if (username) {
+					const user = await User.findOne({ where: { username } })
+					if (user) {
+						user.set('lastLogoutAt', new Date())
+						await user.save()
+					}
+				}
+			} catch (e) {
+			}
+		}
+
+		const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
+		res.clearCookie('access_token', { httpOnly: true, secure: secureFlag, path: '/', sameSite: 'lax' })
+		res.clearCookie('refresh_token', { httpOnly: true, secure: secureFlag, path: '/', sameSite: 'lax' })
+		res.clearCookie('oauth_state', { path: '/' })
+	} catch (e) {}
+	return res.json({ ok: true })
+})
+
+router.get('/logout/clear', (req, res) => {
+	try {
+		const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
+		res.clearCookie('access_token', { httpOnly: true, secure: secureFlag, path: '/', sameSite: 'lax' })
+		res.clearCookie('refresh_token', { httpOnly: true, secure: secureFlag, path: '/', sameSite: 'lax' })
+		res.clearCookie('oauth_state', { path: '/' })
+	} catch (e) {}
+
+		const frontendBase = FRONTEND_ORIGIN || 'http://localhost:5173'
+		const redirectRaw = String(req.query.redirect || '')
+		let target = ''
+		try {
+			const urlObj = new URL(redirectRaw || '/', frontendBase)
+			if (!urlObj.searchParams.has('message')) urlObj.searchParams.set('message', 'Signed out successfully')
+			target = urlObj.toString()
+		} catch (e) {
+			const fb = new URL('/login', frontendBase)
+			fb.searchParams.set('message', 'Signed out successfully')
+			target = fb.toString()
+		}
+		return res.redirect(target)
 })
 
 export default router

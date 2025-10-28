@@ -31,7 +31,6 @@ onMounted(async () => {
     const hashToken = hashParams.get('access_token') || undefined
     const accessToken = queryToken || hashToken
     if (accessToken) {
-      console.debug('[AuthCallback] access_token received:', accessToken.slice(0, 20))
       try {
         const resp = await api.post('/api/oauth/complete', { access_token: accessToken })
         const tr = resp.data

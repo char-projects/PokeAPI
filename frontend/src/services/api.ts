@@ -19,7 +19,6 @@ api.interceptors.response.use(
                 if (isCrossOrigin && !hasStoredRefresh) {
                     return Promise.reject(error)
                 }
-                // Avoid a static import to prevent a circular dependency with ./auth
                 const { refreshToken } = await import('./auth')
                 const ok = await refreshToken()
                 if (ok) {
@@ -66,7 +65,17 @@ export const getPokemons = async () => {
     return res.data
 }
 
-export const createPokemon = async (payload: { name: string; description?: string; imageUrl?: string }) => {
+export const getMyPokemons = async () => {
+    const res = await api.get('/api/mypokemons')
+    return res.data
+}
+
+export const deleteMyPokemon = async (id: string | number) => {
+    const res = await api.delete(`/api/mypokemons/${id}`)
+    return res.data
+}
+
+export const createPokemon = async (payload: { name: string; description?: string; imageUrl?: string; shareOnly?: boolean }) => {
     const res = await api.post('/api/pokemons', payload)
     return res.data
 }

@@ -10,8 +10,7 @@ export const oauthExchange = async (req: Request, res: Response) => {
   try {
   const tr = await exchangeToken(code, redirect_uri, code_verifier)
   const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
-  if (tr.access_token) res.cookie('access_token', tr.access_token, { httpOnly: true, secure: secureFlag, sameSite: 'lax' })
-  if (tr.refresh_token) res.cookie('refresh_token', tr.refresh_token, { httpOnly: true, secure: secureFlag, sameSite: 'lax' })
+  if (tr.access_token) res.cookie('access_token', tr.access_token, { httpOnly: true, secure: secureFlag, path: '/', sameSite: 'lax' })
     return res.json(tr)
   } catch (err: any) {
     console.error('OAuth exchange failed:', err?.response?.data || err?.message || err)
@@ -25,8 +24,7 @@ export const oauthRefresh = async (req: Request, res: Response) => {
   try {
   const tr = await refreshToken(refresh_token)
   const secureFlag = !!(req.secure || (req.headers['x-forwarded-proto'] === 'https'))
-  if (tr.access_token) res.cookie('access_token', tr.access_token, { httpOnly: true, secure: secureFlag, sameSite: 'lax' })
-  if (tr.refresh_token) res.cookie('refresh_token', tr.refresh_token, { httpOnly: true, secure: secureFlag, sameSite: 'lax' })
+  if (tr.access_token) res.cookie('access_token', tr.access_token, { httpOnly: true, secure: secureFlag, path: '/', sameSite: 'lax' })
     return res.json(tr)
   } catch (err: any) {
     console.error('OAuth refresh failed:', err?.response?.data || err?.message || err)

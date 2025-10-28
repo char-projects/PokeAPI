@@ -5,6 +5,7 @@ export class User extends Model {
   declare id: number
   declare username: string
   declare passwordHash: string
+  declare lastLogoutAt?: Date | null
   declare readonly createdAt: Date
   declare readonly updatedAt: Date
 }
@@ -24,6 +25,11 @@ User.init(
     passwordHash: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    lastLogoutAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

@@ -43,17 +43,30 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../services/api'
+import { loginWithProvider } from '../services/auth'
 
-const login = () => {
-  const backend = import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
-  window.location.href = `${backend.replace(/\/$/, '')}/api/oauth/start`
-}
-
+const login = () => loginWithProvider()
 const username = ref('')
 const password = ref('')
 const message = ref('')
+const route = useRoute()
+const router = useRouter()
+
+onMounted(() => {
+  try {
+    const q = route.query?.message
+    if (q) {
+      message.value = String(q)
+      const newQuery = { ...route.query }
+      delete (newQuery as any).message
+      router.replace({ path: route.path, query: newQuery }).catch(() => {})
+      setTimeout(() => { message.value = '' }, 3000)
+    }
+  } catch (e) {}
+})
 const rememberMe = ref(false)
 const showPassword = ref(false)
 const usernameError = ref('')
