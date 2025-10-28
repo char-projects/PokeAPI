@@ -5,6 +5,8 @@ import User from '../models/User.js'
 import { JWT_SECRET, JWT_EXPIRES_IN, FRONTEND_ORIGIN } from '../config.js'
 import { OAUTH_AUTHORIZE_URL, OAUTH_CALLBACK_URL, OAUTH_CLIENT_ID } from '../config.js'
 import crypto from 'crypto'
+import axios from 'axios'
+import { OAUTH_TOKEN_URL, OAUTH_CLIENT_SECRET } from '../config.js'
 
 const router = Router()
 
@@ -98,8 +100,27 @@ router.get('/oauth/callback', async (req, res) => {
   res.clearCookie('oauth_state')
 
   const frontendBase = FRONTEND_ORIGIN || 'http://localhost:5173'
-  const redirectUrl = `${frontendBase}/auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
-  return res.redirect(redirectUrl)
+		try {
+			if (!OAUTH_TOKEN_URL) throw new Error('OAUTH_TOKEN_URL not configured')
+			const body = new URLSearchParams({
+				grant_type: 'authorization_code',
+				code,
+				redirect_uri: OAUTH_CALLBACK_URL as string,
+				client_id: OAUTH_CLIENT_ID as string,
+			})
+			if (OAUTH_CLIENT_SECRET) body.set('client_secret', OAUTH_CLIENT_SECRET as string)
+			const tokenResp = await axios.post(OAUTH_TOKEN_URL as string, body.toString(), { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } })
+			const access_token = tokenResp.data?.access_token as string | undefined
+			if (!access_token) {
+				throw new Error('no access_token from provider')
+			}
+			const redirectUrl = `${frontendBase}/auth/callback#access_token=${encodeURIComponent(access_token)}&state=${encodeURIComponent(state || '')}`
+			return res.redirect(redirectUrl)
+		} catch (e: any) {
+			console.error('oauth callback exchange failed', e?.response?.data || e?.message || e)
+			const redirectUrl = `${frontendBase}/auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state || '')}`
+			return res.redirect(redirectUrl)
+		}
 })
 
 export default router

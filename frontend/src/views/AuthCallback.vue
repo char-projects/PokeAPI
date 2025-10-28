@@ -15,9 +15,9 @@
 
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
-// import { handleRedirectCallback } from '../services/auth'
 import { useRoute, useRouter } from 'vue-router'
 import { LS_KEY } from '../services/auth'
+import api from '../services/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -26,22 +26,26 @@ const callbackUrl = ref(window.location.href)
 
 onMounted(async () => {
   try {
-    const accessToken = route.query.access_token as string
+    const queryToken = route.query.access_token as string | undefined
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const hashToken = hashParams.get('access_token') || undefined
+    const accessToken = queryToken || hashToken
     if (accessToken) {
-      // Debug: log access token received in query
-      console.debug('[AuthCallback] access_token received in query:', accessToken.slice(0, 20))
-      // Optionally, you could store the token here or trigger further actions
-      localStorage.setItem(LS_KEY.ACCESS, accessToken)
+      console.debug('[AuthCallback] access_token received:', accessToken.slice(0, 20))
+      try {
+        const resp = await api.post('/api/oauth/complete', { access_token: accessToken })
+        const tr = resp.data
+        if (tr?.access_token) {
+          localStorage.setItem(LS_KEY.ACCESS, tr.access_token)
+          ;(api.defaults.headers as any).common['Authorization'] = `Bearer ${tr.access_token}`
+        }
+      } catch (e: any) {
+        console.error('Exchange to backend failed', e?.response?.data || e?.message || e)
+      }
       router.replace({ path: '/create', query: {} })
     } else {
       error.value = 'No access token found in callback URL. Please try signing in again.'
     }
-    // const tr = await handleRedirectCallback()
-    // if (tr) {
-    //   router.replace({ path: '/create', query: {} })
-    // } else {
-    //   error.value = 'No authorization code found or token exchange failed. Please try signing in again.'
-    // }
   } catch (err: any) {
     console.error('Callback handling failed', err)
     error.value = err?.message || 'Sign-in failed'

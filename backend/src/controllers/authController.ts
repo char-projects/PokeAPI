@@ -3,7 +3,6 @@ import { exchangeToken, refreshToken } from '../services/oauthService.js'
 import axios from 'axios'
 import User from '../models/User.js'
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config.js'
-import * as jwt from 'jsonwebtoken'
 
 export const oauthExchange = async (req: Request, res: Response) => {
   const { code, redirect_uri, code_verifier } = req.body || {}
@@ -44,9 +43,12 @@ export const oauthComplete = async (req: Request, res: Response) => {
   if (!providerToken) return res.status(400).json({ error: 'access_token required' })
   try {
     let profile: any = null
+    const _jwt = await import('jsonwebtoken')
+    const jwtLib: any = (_jwt && (_jwt as any).default) ? (_jwt as any).default : _jwt
+
     if (providerToken.split('.').length === 3) {
       try {
-        const decoded = (jwt.decode(providerToken) || {}) as any
+        const decoded = (jwtLib.decode(providerToken) || {}) as any
         profile = decoded
       } catch (e) {
         profile = null
@@ -57,12 +59,6 @@ export const oauthComplete = async (req: Request, res: Response) => {
       const r = await axios.get(userinfoUrl, { headers: { Authorization: `Bearer ${providerToken}` } })
       profile = r.data
     }
-    // Debug: log provider profile info (non-sensitive) to help diagnose 401s
-    try {
-      console.debug('[oauthComplete] provider profile keys:', Object.keys(profile || {}))
-    } catch (e) {
-      // ignore
-    }
     const username = profile.email || profile.sub
     if (!username) return res.status(400).json({ error: 'failed to obtain user identity from provider' })
 
@@ -72,7 +68,7 @@ export const oauthComplete = async (req: Request, res: Response) => {
     }
 
     const payload = { sub: username, name: profile.name || username }
-    const token = jwt.sign(payload as object, JWT_SECRET as unknown as jwt.Secret, { expiresIn: JWT_EXPIRES_IN as string } as jwt.SignOptions)
+  const token = jwtLib.sign(payload as object, JWT_SECRET as unknown as any, { expiresIn: JWT_EXPIRES_IN as string } as any)
     return res.json({ access_token: token, user: payload })
   } catch (err: any) {
     console.error('oauth complete failed', err?.response?.data || err?.message || err)

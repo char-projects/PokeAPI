@@ -64,7 +64,7 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
 import { generateImage, createPokemon } from '../services/api'
-import { getCurrentUser, loginWithPKCE } from '../services/auth'
+import { getCurrentUser, loginWithProvider } from '../services/auth'
 import PokemonCard from '../components/PokemonCard.vue'
 import ShareModal from '../components/ShareModal.vue'
 
@@ -129,7 +129,7 @@ const savePokemon = async () => {
   if (!imageUrl.value) return
   const user = await getCurrentUser()
   if (!user) {
-    if (confirm('You need to sign in to save. Sign in now?')) loginWithPKCE()
+    if (confirm('You need to sign in to save. Sign in now?')) loginWithProvider()
     return
   }
   try {

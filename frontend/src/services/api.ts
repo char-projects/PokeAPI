@@ -1,5 +1,4 @@
 import axios, { AxiosError } from "axios"
-import { refreshToken } from "./auth"
 
 const base = import.meta.env.VITE_API_BASE ?? import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 const api = axios.create({
@@ -20,6 +19,8 @@ api.interceptors.response.use(
                 if (isCrossOrigin && !hasStoredRefresh) {
                     return Promise.reject(error)
                 }
+                // Avoid a static import to prevent a circular dependency with ./auth
+                const { refreshToken } = await import('./auth')
                 const ok = await refreshToken()
                 if (ok) {
                     return api.request(originalRequest)
